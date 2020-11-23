@@ -19,7 +19,8 @@ class StravaWidget(base._Widget, base.MarginMixin):
         ("text", "{CA:%b} {CD:.1f}km", "Widget text"),
         ("refresh_interval", 1800, "Time to update data"),
         ("startup_delay", 10, "Time before sending first web request"),
-        ("popup_display_timeout", 15, "Time to display extended info")
+        ("popup_display_timeout", 15, "Time to display extended info"),
+        ("warning_colour", "aaaa00", "Highlight when there is an error."),
     ]
 
     format_map = {
@@ -79,7 +80,7 @@ class StravaWidget(base._Widget, base.MarginMixin):
 
             self.formatted_data[k] = obj
 
-        self.timeout_add(1, self.update)
+        self.timeout_add(1, self.draw)
         self.timeout_add(self.refresh_interval, self.refresh)
 
     def refresh(self):
@@ -97,7 +98,7 @@ class StravaWidget(base._Widget, base.MarginMixin):
 
         total = 0
 
-        if self.data is not None:
+        if self.data is not None and self.text:
 
             text = self.formatText(self.text)
 
@@ -127,7 +128,20 @@ class StravaWidget(base._Widget, base.MarginMixin):
         self.drawer.ctx.line_to(19 * scale, 14 * scale)
         self.drawer.ctx.stroke()
 
-    def update(self):
+    def draw_highlight(self, top=False, colour="000000"):
+
+        self.drawer.set_source_rgb(colour)
+
+        y = 0 if top else self.bar.height - 2
+
+        # Draw the bar
+        self.drawer.fillrect(0,
+                             y,
+                             self.width,
+                             2,
+                             2)
+
+    def draw(self):
         # Remove background
         self.drawer.clear(self.background or self.bar.background)
 
@@ -137,29 +151,25 @@ class StravaWidget(base._Widget, base.MarginMixin):
         x_offset += self.height
 
         if self.data is None:
-            text = ""
+            self.draw_highlight(top=True, colour=self.warning_colour)
 
         else:
             text = self.formatText(self.text)
 
-        # Create a text box
-        layout = self.drawer.textlayout(text,
-                                        self.font_colour,
-                                        self.font,
-                                        self.fontsize,
-                                        None,
-                                        wrap=False)
+            # Create a text box
+            layout = self.drawer.textlayout(text,
+                                            self.font_colour,
+                                            self.font,
+                                            self.fontsize,
+                                            None,
+                                            wrap=False)
 
-        # We want to centre this vertically
-        y_offset = (self.bar.height - layout.height) / 2
+            # We want to centre this vertically
+            y_offset = (self.bar.height - layout.height) / 2
 
-        # Draw it
-        layout.draw(x_offset + self.margin_x, y_offset)
+            # Draw it
+            layout.draw(x_offset + self.margin_x, y_offset)
 
-        # Redraw the bar
-        self.bar.draw()
-
-    def draw(self):
         self.drawer.draw(offsetx=self.offset, width=self.length)
 
     def button_press(self, x, y, button):
@@ -167,7 +177,7 @@ class StravaWidget(base._Widget, base.MarginMixin):
 
     def hide(self):
         self.hidden = True
-        self.update()
+        self.draw()
 
     def mouse_enter(self, x, y):
         pass
