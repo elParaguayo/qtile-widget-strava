@@ -80,7 +80,7 @@ class StravaWidget(base._Widget, base.MarginMixin):
 
             self.formatted_data[k] = obj
 
-        self.timeout_add(1, self.draw)
+        self.timeout_add(1, self.bar.draw)
         self.timeout_add(self.refresh_interval, self.refresh)
 
     def refresh(self):
@@ -174,10 +174,6 @@ class StravaWidget(base._Widget, base.MarginMixin):
 
     def button_press(self, x, y, button):
         self.show_popup_summary()
-
-    def hide(self):
-        self.hidden = True
-        self.draw()
 
     def mouse_enter(self, x, y):
         pass
