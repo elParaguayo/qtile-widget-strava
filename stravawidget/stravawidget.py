@@ -1,6 +1,3 @@
-from queue import Queue, Empty
-from threading import Thread
-
 from libqtile.widget import base
 from libqtile import bar
 from libqtile.log_utils import logger
@@ -55,41 +52,29 @@ class StravaWidget(base._Widget, base.MarginMixin):
         self.timeout_add(self.startup_delay, self.refresh)
 
     def _get_data(self, queue=None):
-        result, data = get_strava_data()
+        return get_strava_data()
 
-        if result:
-            queue.put(data)
+    def _read_data(self, future):
+        results = future.result()
 
-        else:
-            logger.warning(data)
+        if results:
+            success, data = results
 
-    def _wait_for_data(self):
-        try:
-            data = self._queue.get(False)
-            self._read_data(data)
-        except Empty:
-            self.timeout_add(1, self._wait_for_data)
+            self.data = data
+            self.formatted_data = {}
+            for k, v in self.format_map.items():
+                obj = self.data
+                for attr in v:
+                    obj = getattr(obj, attr)
 
-    def _read_data(self, data):
-        self.data = data
-        self.formatted_data = {}
-        for k, v in self.format_map.items():
-            obj = self.data
-            for attr in v:
-                obj = getattr(obj, attr)
+                self.formatted_data[k] = obj
 
-            self.formatted_data[k] = obj
-
-        self.timeout_add(1, self.bar.draw)
+            self.timeout_add(1, self.bar.draw)
         self.timeout_add(self.refresh_interval, self.refresh)
 
     def refresh(self):
-        self._queue = Queue()
-        kwargs = {"queue": self._queue}
-        self.worker = Thread(target=self._get_data, kwargs=kwargs)
-        self.worker.daemon = True
-        self.worker.start()
-        self._wait_for_data()
+        future = self.qtile.run_in_executor(self._get_data)
+        future.add_done_callback(self._read_data)
 
     def set_refresh_timer(self):
         pass
